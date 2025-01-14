@@ -45,6 +45,7 @@ from utilities_common.general import load_db_config, load_module_from_source
 from .validated_config_db_connector import ValidatedConfigDBConnector
 import utilities_common.multi_asic as multi_asic_util
 from utilities_common.flock import try_lock
+from otn.config_main import *
 
 from .utils import log
 
@@ -1416,7 +1417,11 @@ def config(ctx):
         sys.exit("Root privileges are required for this operation")
 
     ctx.obj = Db()
+        
+    if asic_type.startswith("ot-"):
+        add_otn_config_context(ctx)
 
+add_otn_config_commands(config)
 
 # Add groups from other modules
 config.add_command(aaa.aaa)

@@ -21,6 +21,7 @@ import utilities_common.constants as constants
 from utilities_common.general import load_db_config
 from json.decoder import JSONDecodeError
 from sonic_py_common.general import getstatusoutput_noshell_pipe
+from otn.show_main import *
 
 # mock the redis for unit test purposes #
 try:
@@ -99,6 +100,21 @@ def get_routing_stack():
 
 # Global Routing-Stack variable
 routing_stack = get_routing_stack()
+
+def get_asic_type():
+    asic_type = None
+    try:
+        version_info = device_info.get_sonic_version_info()
+        if version_info:
+            asic_type = version_info['asic_type']
+    except (KeyError, TypeError) as e:
+        print("Caught an exception: " + str(e))
+        raise click.Abort()
+    
+    return asic_type
+
+#Global Asic-Type variable
+asic_type = get_asic_type()
 
 # Read given JSON file
 def readJsonFile(fileName):
@@ -292,6 +308,12 @@ def cli(ctx):
     # Load database config files
     load_db_config()
     ctx.obj = Db()
+    
+    if asic_type.startswith("ot-"):
+        add_otn_show_context(ctx)    
+
+if asic_type.startswith("ot-"):
+    add_otn_show_commands(cli)
 
 # Add groups from other modules
 cli.add_command(acl.acl)
