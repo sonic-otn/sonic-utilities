@@ -1,6 +1,5 @@
 import click
 import time
-from sonic_py_common import device_info
 from . import edfa, terminal_line_show, voa, ocm, otdr, osc, olp, wss, port, slot_upgrade, terminal_client_show, terminal_client_config, terminal_line_config
 from otn.utils.utils import *
 from otn.utils.config_utils import set_slot_configuration_save, set_slot_synchronized_save
@@ -10,7 +9,6 @@ from otn.utils.pm import *
 
 OBX_TERMINAL_LINECARD = ['P230C']
 
-BOARD_MODE_STRING=['L1_400G_CA_100GE', 'LA_200G_CA_100GE_QPSK', 'LA_400G_CA_200GE']
 #################################### info ############################################################
 @click.group()
 @click.pass_context
@@ -256,6 +254,10 @@ def flush_linecard_data_except_state(slot_id):
     flush_db_except_table_key_fields(state_db, "LINECARD", f"LINECARD-1-{slot_id}", "|", ["power-admin-state","empty"])
     flush_linecard_data(slot_id)
 
+def flush_linecard_all_data(slot_id):
+    connect_muti_db_common(slot_id, DB_STATE_IDX).flushdb()
+    flush_linecard_data(slot_id)
+
 def create_linecard_config_file(slot_id, cfg_type, board_mode=None):
     asic_id = slot_id - 1
     platform = get_chassis_config_db().hget('DEVICE_METADATA|localhost', 'platform')
@@ -309,7 +311,7 @@ def config_linecard_type_none(slot_id):
     asic_type = get_asic_type()
     if not is_slot_present(slot_id) or is_card_type_mismatch(slot_id) or asic_type == 'ot-vs':
         click.echo(f'Setting slot {slot_id} type NONE now, Wait for a minute..')
-        flush_linecard_data_except_state(slot_id)
+        flush_linecard_all_data(slot_id)
     else:
         echo_log_exit("Error: Cannot config cardtype NONE if linecard present and type matched.")
 
