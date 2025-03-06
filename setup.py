@@ -120,7 +120,6 @@ setup(
         'scripts/buffershow',
         'scripts/coredump-compress',
         'scripts/configlet',
-        'scripts/config_validator.py',
         'scripts/db_migrator.py',
         'scripts/decode-syseeprom',
         'scripts/dropcheck',
@@ -195,7 +194,8 @@ setup(
         'scripts/verify_image_sign.sh',
         'scripts/verify_image_sign_common.sh',
         'scripts/check_db_integrity.py',
-        'scripts/sysreadyshow'
+        'scripts/sysreadyshow',
+        'scripts/wredstat'
     ],
     entry_points={
         'console_scripts': [
