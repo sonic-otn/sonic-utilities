@@ -31,8 +31,10 @@ def format_attr_value(entry, attr):
         str: fomatted attribute value.
     """
 
-    if attr["is-leaf-list"]:
-        return "\n".join(entry.get(attr["name"], []))
+    #TODO: Add support for leaf-list attributes
+    # There is a bug for show leaf-list.
+    #if attr["is-leaf-list"]:
+    #    return "\n".join(entry.get(attr["name"], []))
     return entry.get(attr["name"], "N/A")
 
 

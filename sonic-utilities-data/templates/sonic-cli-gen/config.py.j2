@@ -244,18 +244,18 @@ Jinja2 Call:
 Result:
 @click.option(
     "--leaf1",
-    help="leaf1-desc [mandatory]",
+    help="""leaf1-desc [mandatory]""",
 )
 @click.option(
     "--leaf2",
-    help="leaf2-desc",
+    help="""leaf2-desc""",
 )
 #}
 {%- macro gen_click_options(attrs) -%}
 {%- for attr in attrs %}
 @click.option(
     "--{{ cli_name(attr.name) }}",
-    help="{{ attr.description }}{% if attr['is-mandatory'] %}[mandatory]{% endif %}",
+    help="""{{ attr.description }}{% if attr['is-mandatory'] %}[mandatory]{% endif %}""",
 )
 {%- endfor %}
 {%- endmacro %}
