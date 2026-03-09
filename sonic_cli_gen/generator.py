@@ -29,7 +29,8 @@ class CliGenerator:
         cli_group,
         plugin_name,
         config_db_path='configDB',
-        templates_path='/usr/share/sonic/templates/sonic-cli-gen/'
+        templates_path='/usr/share/sonic/templates/sonic-cli-gen/',
+        vertical=False
     ):
         """ Generate click CLI plugin and put it to:
             /usr/local/lib/<python>/dist-packages/<CLI group>/plugins/auto/
@@ -55,7 +56,7 @@ class CliGenerator:
         plugin_path = get_cli_plugin_path(cli_group, plugin_name + '_yang.py')
 
         with open(plugin_path, 'w') as plugin_py:
-            plugin_py.write(template.render(yang_dict))
+            plugin_py.write(template.render(yang_dict, vertical=vertical))
             self.logger.info(' Auto-generation successful! Location: {}'.format(plugin_path))
 
 

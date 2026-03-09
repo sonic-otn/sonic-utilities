@@ -12,7 +12,11 @@ Source YANG module: {{ source_yang_module }}
 import click
 import tabulate
 import natsort
+import textwrap
 import utilities_common.cli as clicommon
+
+VALUE_COLUMN_MAX_WIDTH = 64
+VERTICAL = {{ "True" if vertical else "False" }}
 
 
 {% macro column_name(name) -%}
@@ -83,6 +87,102 @@ def get_db_table(db, db_name, table_name):
 
     return table
 
+
+def format_object_label(key):
+    """ Helper that formats a table key for vertical output header.
+
+    Args:
+        key (Union[str, Tuple[str, ...]]): Table key.
+
+    Returns:
+        str: formatted object label.
+    """
+
+    if isinstance(key, tuple):
+        return " | ".join(str(k) for k in key)
+
+    return str(key)
+
+
+def format_vertical_label(name):
+    """ Helper that formats a field name for vertical output.
+
+    Args:
+        name (str): Field or key header name.
+
+    Returns:
+        str: formatted field label. Sentence-style capitalization in titles and headings.
+    """
+
+    name = str(name)
+    if not name:
+        return name
+
+    return name.lower().capitalize()
+
+
+def wrap_vertical_value(value):
+    """ Helper that wraps a value for vertical output.
+
+    Args:
+        value (Any): Value to be displayed.
+
+    Returns:
+        List[str]: wrapped value lines.
+    """
+
+    wrapped_lines = []
+
+    for line in str(value).splitlines() or [""]:
+        parts = textwrap.wrap(
+            line,
+            width=VALUE_COLUMN_MAX_WIDTH,
+            replace_whitespace=False,
+            drop_whitespace=False
+        )
+        wrapped_lines.extend(parts or [""])
+
+    return wrapped_lines or [""]
+
+
+def render_vertical_blocks(key_header, object_headers, field_names, object_rows):
+    """ Helper that renders table data as vertical output blocks.
+
+    Args:
+        key_header (str): Header label for object key line.
+        object_headers (List[str]): Object key labels.
+        field_names (List[str]): Field names to display.
+        object_rows (List[List[str]]): Table rows without key columns.
+    """
+
+    key_header = format_vertical_label(key_header)
+    display_field_names = [format_vertical_label(field_name) for field_name in field_names]
+    label_width = max((len(field_name) for field_name in display_field_names), default=0)
+
+    for index, object_header in enumerate(object_headers):
+        click.echo("{} {}".format(key_header, object_header))
+
+        object_row = object_rows[index] if index < len(object_rows) else []
+
+        for field_index, field_name in enumerate(display_field_names):
+            value = object_row[field_index] if field_index < len(object_row) else "N/A"
+            wrapped_lines = wrap_vertical_value(value)
+
+            click.echo("    {label:<{width}} :  {value}".format(
+                label=field_name,
+                width=label_width,
+                value=wrapped_lines[0]
+            ))
+
+            for wrapped_line in wrapped_lines[1:]:
+                click.echo("    {label:<{width}}    {value}".format(
+                    label="",
+                    width=label_width,
+                    value=wrapped_line
+                ))
+
+        if index != len(object_headers) - 1:
+            click.echo()
 
 {# Generates a python list that represents a row in the table view.
 E.g:
@@ -178,6 +278,24 @@ Result:
 ]
 {% endmacro %}
 
+{# Generates the raw object header name for vertical view.
+E.g:
+Jinja2: {{ gen_raw_object_header([{"name": "name"}]) }}
+Result:
+"name"
+
+Jinja2: {{ gen_raw_object_header([{"name": "key1"}, {"name": "key2"}]) }}
+Result:
+"object"
+
+#}
+{% macro gen_raw_object_header(keys) -%}
+{%- if keys|length == 1 -%}
+"{{ keys[0].name }}"
+{%- else -%}
+"object"
+{%- endif -%}
+{% endmacro %}
 
 {% for table in tables %}
 {% if "static-objects" in table %}
@@ -214,12 +332,18 @@ def {{ table.name }}_{{ object.name }}(db):
 
     header = {{ gen_header(object.attrs) }}
     body = []
+    object_headers = ["{{ object.name }}"]
 
     table = get_db_table(db, '{{ table['db-name'] }}', '{{ table.name }}')
     entry = table.get("{{ object.name }}", {})
     row = {{ gen_row("entry", object.attrs) }}
     body.append(row)
-    click.echo(tabulate.tabulate(body, header))
+    object_rows = [row]
+
+    if VERTICAL:
+        render_vertical_blocks("name", object_headers, header, object_rows)
+    else:
+        click.echo(tabulate.tabulate(body, header))
 
 {% endfor %}
 {% elif "dynamic-objects" in table %}
@@ -250,7 +374,10 @@ def {{ name }}(db):
     """ {{ object.description }} [Callable command group] """
 
     header = {{ gen_header(object["keys"] + object.attrs) }}
+    field_names = {{ gen_header(object.attrs) }}
     body = []
+    object_headers = []
+    object_rows = []
 
     table = get_db_table(db, '{{ table['db-name'] }}', '{{ name }}')
     for key in natsort.natsorted(table):
@@ -260,8 +387,13 @@ def {{ name }}(db):
 
         row = [*key] + {{ gen_row("entry", object.attrs) }}
         body.append(row)
+        object_headers.append(format_object_label(key))
+        object_rows.append({{ gen_row("entry", object.attrs) }})
 
-    click.echo(tabulate.tabulate(body, header))
+    if VERTICAL:
+        render_vertical_blocks({{ gen_raw_object_header(object["keys"]) }}, object_headers, field_names, object_rows)
+    else:
+        click.echo(tabulate.tabulate(body, header))
 {% endfor %}
 {% endif %}
 {% endfor %}
