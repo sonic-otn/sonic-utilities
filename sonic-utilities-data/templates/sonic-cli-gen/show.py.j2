@@ -145,13 +145,14 @@ def wrap_vertical_value(value):
     return wrapped_lines or [""]
 
 
-def render_vertical_blocks(key_header, object_headers, field_names, object_rows):
+def render_vertical_blocks(key_header, object_headers, field_names, field_units, object_rows):
     """ Helper that renders table data as vertical output blocks.
 
     Args:
         key_header (str): Header label for object key line.
         object_headers (List[str]): Object key labels.
         field_names (List[str]): Field names to display.
+        field_units (List[str]): Units for each field, parallel to field_names.
         object_rows (List[List[str]]): Table rows without key columns.
     """
 
@@ -166,6 +167,9 @@ def render_vertical_blocks(key_header, object_headers, field_names, object_rows)
 
         for field_index, field_name in enumerate(display_field_names):
             value = object_row[field_index] if field_index < len(object_row) else "N/A"
+            unit = field_units[field_index] if field_index < len(field_units) else ""
+            if unit and value not in ("", "N/A"):
+                value = "{}{}".format(value, unit)
             wrapped_lines = wrap_vertical_value(value)
 
             click.echo("    {label:<{width}} :  {value}".format(
@@ -278,6 +282,25 @@ Result:
 ]
 {% endmacro %}
 
+{# Generates a list of unit strings parallel to gen_header for vertical view.
+Empty string when an attribute has no unit. #}
+{% macro gen_units(attrs) -%}
+[
+{% for attr in attrs|rejectattr("group", "defined") -%}
+    "{{ attr.units if attr.units else '' }}",
+{% endfor -%}
+{% for group, attrs in attrs|selectattr("group", "defined")|groupby("group") -%}
+{%- if group == "" %}
+{% for attr in attrs -%}
+    "{{ attr.units if attr.units else '' }}",
+{% endfor -%}
+{%- else %}
+    "",
+{%- endif %}
+{% endfor -%}
+]
+{% endmacro %}
+
 {# Generates the raw object header name for vertical view.
 E.g:
 Jinja2: {{ gen_raw_object_header([{"name": "name"}]) }}
@@ -341,7 +364,8 @@ def {{ table.name }}_{{ object.name }}(db):
     object_rows = [row]
 
     if VERTICAL:
-        render_vertical_blocks("name", object_headers, header, object_rows)
+        field_units = {{ gen_units(object.attrs) }}
+        render_vertical_blocks("name", object_headers, header, field_units, object_rows)
     else:
         click.echo(tabulate.tabulate(body, header))
 
@@ -391,7 +415,8 @@ def {{ name }}(db):
         object_rows.append({{ gen_row("entry", object.attrs) }})
 
     if VERTICAL:
-        render_vertical_blocks({{ gen_raw_object_header(object["keys"]) }}, object_headers, field_names, object_rows)
+        field_units = {{ gen_units(object.attrs) }}
+        render_vertical_blocks({{ gen_raw_object_header(object["keys"]) }}, object_headers, field_names, field_units, object_rows)
     else:
         click.echo(tabulate.tabulate(body, header))
 {% endfor %}
