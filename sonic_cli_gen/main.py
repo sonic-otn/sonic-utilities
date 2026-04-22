@@ -29,11 +29,17 @@ def cli(ctx):
 @cli.command()
 @click.argument('cli_group', type=click.Choice(['config', 'show']))
 @click.argument('yang_model_name', type=click.STRING)
+@click.option('--vertical', is_flag=True, default=False,
+              help='Generate show plugins with vertical output.')
 @click.pass_context
-def generate(ctx, cli_group, yang_model_name):
+def generate(ctx, cli_group, yang_model_name, vertical):
     """ Generate click CLI plugin. """
 
-    ctx.obj['gen'].generate_cli_plugin(cli_group, yang_model_name)
+    ctx.obj['gen'].generate_cli_plugin(
+        cli_group,
+        yang_model_name,
+        vertical=vertical
+    )
 
 
 @cli.command()
